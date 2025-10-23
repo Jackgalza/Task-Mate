@@ -1,135 +1,137 @@
-body {
-  font-family: 'Poppins', sans-serif;
-  background-color: #f9f9f9;
-  display: flex;
-  justify-content: center;
-  padding: 40px;
+let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+const taskInput = document.getElementById('taskInput');
+const taskDate = document.getElementById('taskDate');
+const addTaskBtn = document.getElementById('addTask');
+const dailyTask = document.getElementById('dailyTask');
+const taskList = document.getElementById('taskList');
+
+// Fungsi simpan ke localStorage
+function saveTasks() {
+  localStorage.setItem('tasks', JSON.stringify(tasks));
 }
 
-.container {
-  background: #fff;
-  border-radius: 20px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-  width: 700px;
-  overflow: hidden;
+// Fungsi tampilkan tugas
+function displayTasks(filter = 'all') {
+  taskList.innerHTML = '';
+
+  let filtered = tasks.filter(task => {
+    if (filter === 'active') return !task.done;
+    if (filter === 'done') return task.done;
+    return true;
+  });
+
+  filtered.forEach((task, index) => {
+    const div = document.createElement('div');
+    div.className = 'task-item' + (task.done ? ' done' : '');
+
+    div.innerHTML = `
+      <div class="info">
+        <strong>${task.text}</strong>
+        <span class="details">${task.date ? '📅 ' + task.date : ''}</span>
+        ${task.isDaily ? '<span class="details">🔁 Tugas Harian</span>' : ''}
+        <span class="streak">🔥 ${task.streak || 0} hari berturut-turut</span>
+      </div>
+      <div>
+        <input type="checkbox" ${task.done ? 'checked' : ''} onchange="toggleDone(${index})">
+        <button class="delete-btn" onclick="deleteTask(${index})">🗑️</button>
+      </div>
+    `;
+
+    taskList.appendChild(div);
+  });
 }
 
-.header {
-  background: linear-gradient(90deg, #4f9eff, #38d4e8);
-  color: white;
-  text-align: center;
-  padding: 30px 20px;
-  border-top-left-radius: 20px;
-  border-top-right-radius: 20px;
+// Tambah tugas baru
+addTaskBtn.addEventListener('click', () => {
+  const text = taskInput.value.trim();
+  const date = taskDate.value;
+  if (!text) return;
+
+  tasks.push({
+    text,
+    date,
+    done: false,
+    isDaily: dailyTask.checked,
+    streak: 0,
+    lastCompleted: null
+  });
+
+  taskInput.value = '';
+  taskDate.value = '';
+  dailyTask.checked = false;
+
+  saveTasks();
+  displayTasks();
+});
+
+// Toggle status selesai
+function toggleDone(index) {
+  const task = tasks[index];
+  const today = new Date().toDateString();
+
+  // Jika belum pernah selesai sebelumnya
+  if (!task.lastCompleted) {
+    task.streak = 1;
+  } else {
+    const lastDate = new Date(task.lastCompleted);
+    const diff = (new Date(today) - lastDate) / (1000 * 60 * 60 * 24);
+
+    if (diff === 1) {
+      task.streak += 1;
+    } else if (diff > 1) {
+      task.streak = 1;
+    }
+  }
+
+  task.done = !task.done;
+  if (task.done) {
+    task.lastCompleted = today;
+  }
+
+  saveTasks();
+  displayTasks();
 }
 
-.task-input {
-  display: flex;
-  gap: 10px;
-  padding: 20px;
-  flex-wrap: wrap;
-  justify-content: center;
+// Hapus tugas
+function deleteTask(index) {
+  tasks.splice(index, 1);
+  saveTasks();
+  displayTasks();
 }
 
-.task-input input,
-.task-input select {
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  flex: 1 1 200px;
+// Filter tombol
+const filterButtons = document.querySelectorAll('.filter button');
+filterButtons.forEach(button => {
+  button.addEventListener('click', () => {
+    filterButtons.forEach(btn => btn.classList.remove('active'));
+    button.classList.add('active');
+
+    if (button.id === 'showAll') displayTasks('all');
+    if (button.id === 'showActive') displayTasks('active');
+    if (button.id === 'showDone') displayTasks('done');
+  });
+});
+
+// Hapus semua tugas yang selesai
+document.getElementById('clearDone').addEventListener('click', () => {
+  tasks = tasks.filter(task => !task.done);
+  saveTasks();
+  displayTasks();
+});
+
+// Regenerasi tugas harian setiap hari
+function resetDailyTasks() {
+  const today = new Date().toDateString();
+
+  tasks.forEach(task => {
+    if (task.isDaily && task.lastCompleted !== today) {
+      task.done = false;
+    }
+  });
+
+  saveTasks();
 }
 
-.add-btn {
-  background: linear-gradient(90deg, #4f9eff, #38d4e8);
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: 0.3s;
-  flex: 1 1 100%;
-  max-width: 200px;
-}
-
-.add-btn:hover {
-  opacity: 0.9;
-}
-
-.filter {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 0;
-  flex-wrap: wrap;
-}
-
-.filter button {
-  border: none;
-  padding: 8px 14px;
-  border-radius: 20px;
-  background-color: #f1f1f1;
-  cursor: pointer;
-  transition: 0.3s;
-}
-
-.filter button.active {
-  background-color: #4f9eff;
-  color: white;
-}
-
-.filter .delete-done {
-  background-color: #ffe5e5;
-  color: #ff5a5a;
-}
-
-.task-list .empty {
-  text-align: center;
-  color: #999;
-  padding: 40px 0;
-  font-style: italic;
-}
-
-/* === Tambahan tampilan tugas === */
-.task-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #fafafa;
-  border: 1px solid #eee;
-  border-radius: 10px;
-  padding: 12px 16px;
-  margin: 8px 20px;
-  transition: 0.3s;
-}
-
-.task-item:hover {
-  background: #f0f8ff;
-}
-
-.task-item.done {
-  text-decoration: line-through;
-  color: #999;
-  opacity: 0.7;
-}
-
-.task-item .info {
-  display: flex;
-  flex-direction: column;
-}
-
-.task-item .details {
-  font-size: 0.9em;
-  color: #666;
-}
-
-.delete-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 18px;
-  transition: 0.3s;
-}
-
-.delete-btn:hover {
-  transform: scale(1.2);
-}
+// Jalankan ketika halaman dibuka
+resetDailyTasks();
+displayTasks();

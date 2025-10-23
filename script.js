@@ -8,7 +8,6 @@ const hapusSelesaiBtn = document.getElementById("hapusSelesai");
 
 let tugasList = JSON.parse(localStorage.getItem("tugasList")) || [];
 
-// Tambah tugas
 btnTambah.addEventListener("click", () => {
   const teks = inputTugas.value.trim();
   const deadline = inputDeadline.value;
@@ -34,7 +33,6 @@ btnTambah.addEventListener("click", () => {
   tugasHarianCheckbox.checked = false;
 });
 
-// Render daftar tugas
 function renderTugas(filter = "semua") {
   daftarTugas.innerHTML = "";
 
@@ -53,12 +51,28 @@ function renderTugas(filter = "semua") {
     const li = document.createElement("li");
     li.className = tugas.selesai ? "selesai" : "";
 
+    const formattedDeadline = tugas.deadline
+      ? new Date(tugas.deadline).toLocaleString("id-ID", {
+          weekday: "short",
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        })
+      : "";
+
     li.innerHTML = `
-      <span>${tugas.teks} ${tugas.deadline ? `📅 ${tugas.deadline}` : ""}</span>
-      ${tugas.harian ? `<span>🔥 ${tugas.streak}</span>` : ""}
       <div>
-        <button onclick="toggleSelesai(${tugas.id})">✔️</button>
-        <button onclick="hapusTugas(${tugas.id})">🗑️</button>
+        <strong>${tugas.teks}</strong>
+        <div class="meta">
+          ${tugas.deadline ? `📅 ${formattedDeadline}` : ""}
+          ${tugas.harian ? ` 🔥 Streak: ${tugas.streak}` : ""}
+        </div>
+      </div>
+      <div>
+        <button onclick="toggleSelesai(${tugas.id})">✔</button>
+        <button onclick="hapusTugas(${tugas.id})">🗑</button>
       </div>
     `;
 
@@ -66,7 +80,6 @@ function renderTugas(filter = "semua") {
   });
 }
 
-// Toggle selesai
 function toggleSelesai(id) {
   const tugas = tugasList.find(t => t.id === id);
   if (!tugas) return;
@@ -85,14 +98,12 @@ function toggleSelesai(id) {
   renderTugas();
 }
 
-// Hapus tugas
 function hapusTugas(id) {
   tugasList = tugasList.filter(t => t.id !== id);
   simpanData();
   renderTugas();
 }
 
-// Hapus semua yang selesai
 hapusSelesaiBtn.addEventListener("click", () => {
   tugasList = tugasList.filter(t => !t.selesai);
   simpanData();
@@ -103,11 +114,8 @@ function simpanData() {
   localStorage.setItem("tugasList", JSON.stringify(tugasList));
 }
 
-// Filter tombol
 filterButtons.forEach(btn => {
-  btn.addEventListener("click", () => {
-    renderTugas(btn.dataset.filter);
-  });
+  btn.addEventListener("click", () => renderTugas(btn.dataset.filter));
 });
 
 renderTugas();

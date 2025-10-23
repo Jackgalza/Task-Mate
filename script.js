@@ -1,144 +1,104 @@
-const taskInput = document.getElementById('task');
-const deadlineInput = document.getElementById('deadline');
-const addTaskBtn = document.getElementById('addTask');
-const taskList = document.getElementById('taskList');
-const dailyCheckbox = document.getElementById('dailyTask');
+// Ambil elemen dari HTML
+const inputTugas = document.getElementById("inputTugas");
+const inputDeadline = document.getElementById("inputDeadline");
+const btnTambah = document.getElementById("btnTambah");
+const daftarTugas = document.getElementById("daftarTugas");
+const filterButtons = document.querySelectorAll(".filter");
+const tugasHarianCheckbox = document.getElementById("tugasHarian");
 
-let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+let tugasList = JSON.parse(localStorage.getItem("tugasList")) || [];
 
-displayTasks();
+// Tambah tugas baru
+btnTambah.addEventListener("click", () => {
+  const teks = inputTugas.value.trim();
+  const deadline = inputDeadline.value;
+  const isHarian = tugasHarianCheckbox.checked;
 
-// 🟢 Tambah tugas baru
-addTaskBtn.addEventListener('click', () => {
-  const task = taskInput.value.trim();
-  const deadline = deadlineInput.value;
-  const isDaily = dailyCheckbox.checked;
+  if (!teks) return alert("Tuliskan nama tugas dulu!");
 
-  if (task === '' || deadline === '') {
-    alert('Isi semua kolom terlebih dahulu!');
-    return;
-  }
-
-  const newTask = {
+  const tugasBaru = {
     id: Date.now(),
-    name: task,
+    teks,
     deadline,
-    done: false,
-    daily: isDaily,
+    selesai: false,
+    harian: isHarian,
     streak: 0,
-    lastCompleted: null
+    terakhirSelesai: null,
   };
 
-  tasks.push(newTask);
-  saveTasks();
-  displayTasks();
-
-  taskInput.value = '';
-  deadlineInput.value = '';
-  dailyCheckbox.checked = false;
+  tugasList.push(tugasBaru);
+  simpanData();
+  renderTugas();
+  inputTugas.value = "";
+  inputDeadline.value = "";
+  tugasHarianCheckbox.checked = false;
 });
 
-// 🟡 Tampilkan daftar tugas
-function displayTasks(filter = 'all') {
-  taskList.innerHTML = '';
+// Render daftar tugas
+function renderTugas(filter = "semua") {
+  daftarTugas.innerHTML = "";
 
-  const filteredTasks = tasks.filter(task => {
-    if (filter === 'active') return !task.done;
-    if (filter === 'done') return task.done;
+  const tugasDitampilkan = tugasList.filter((tugas) => {
+    if (filter === "aktif") return !tugas.selesai;
+    if (filter === "selesai") return tugas.selesai;
     return true;
   });
 
-  if (filteredTasks.length === 0) {
-    taskList.innerHTML = `<p class="empty">Tidak ada tugas<br>Tambahkan tugas baru untuk memulai</p>`;
+  if (tugasDitampilkan.length === 0) {
+    daftarTugas.innerHTML = `<p>Tidak ada tugas<br>Tambahkan tugas baru untuk memulai</p>`;
     return;
   }
 
-  filteredTasks.forEach(task => {
-    const div = document.createElement('div');
-    div.className = 'task-item';
-    if (task.done) div.classList.add('done');
-
-    const dailyText = task.daily ? ' (Harian)' : '';
-    const streakText = task.daily ? `🔥 ${task.streak}` : '';
-
-    div.innerHTML = `
-      <div class="info">
-        <strong>${task.name}${dailyText}</strong>
-        <span class="details">${new Date(task.deadline).toLocaleString('id-ID')} ${streakText}</span>
-      </div>
-      <div>
-        <input type="checkbox" ${task.done ? 'checked' : ''} onchange="toggleTask(${task.id})">
-        <button class="delete-btn" onclick="deleteTask(${task.id})">🗑</button>
-      </div>
+  tugasDitampilkan.forEach((tugas) => {
+    const li = document.createElement("li");
+    li.className = tugas.selesai ? "selesai" : "";
+    li.innerHTML = `
+      <span>${tugas.teks} ${tugas.deadline ? `📅 ${tugas.deadline}` : ""}</span>
+      ${tugas.harian ? `<span>🔥 Streak: ${tugas.streak}</span>` : ""}
+      <button onclick="toggleSelesai(${tugas.id})">✔️</button>
+      <button onclick="hapusTugas(${tugas.id})">🗑️</button>
     `;
-
-    taskList.appendChild(div);
+    daftarTugas.appendChild(li);
   });
 }
 
-// ✅ Tandai tugas selesai & update streak
-function toggleTask(id) {
-  tasks = tasks.map(task => {
-    if (task.id === id) {
-      task.done = !task.done;
+// Toggle selesai / belum
+function toggleSelesai(id) {
+  const tugas = tugasList.find((t) => t.id === id);
+  if (!tugas) return;
 
-      if (task.done && task.daily) {
-        const today = new Date().toDateString();
-        if (task.lastCompleted !== today) {
-          task.streak += 1;
-          task.lastCompleted = today;
-        }
-      }
+  tugas.selesai = !tugas.selesai;
+
+  if (tugas.harian && tugas.selesai) {
+    const hariIni = new Date().toDateString();
+    if (tugas.terakhirSelesai !== hariIni) {
+      tugas.streak += 1;
+      tugas.terakhirSelesai = hariIni;
     }
-    return task;
-  });
-  saveTasks();
-  displayTasks();
+  }
+
+  simpanData();
+  renderTugas();
 }
 
-// ❌ Hapus tugas
-function deleteTask(id) {
-  tasks = tasks.filter(task => task.id !== id);
-  saveTasks();
-  displayTasks();
+// Hapus tugas
+function hapusTugas(id) {
+  tugasList = tugasList.filter((t) => t.id !== id);
+  simpanData();
+  renderTugas();
 }
 
-// 💾 Simpan ke localStorage
-function saveTasks() {
-  localStorage.setItem('tasks', JSON.stringify(tasks));
+// Simpan ke localStorage
+function simpanData() {
+  localStorage.setItem("tugasList", JSON.stringify(tugasList));
 }
 
-// 🔁 Reset tugas harian setiap hari
-function resetDailyTasks() {
-  const today = new Date().toDateString();
-  tasks = tasks.map(task => {
-    if (task.daily && task.lastCompleted !== today) {
-      task.done = false;
-    }
-    return task;
-  });
-  saveTasks();
-}
-
-resetDailyTasks();
-
-// 🔘 Filter tombol
-const filterButtons = document.querySelectorAll('.filter button');
-
-filterButtons.forEach(button => {
-  button.addEventListener('click', () => {
-    filterButtons.forEach(btn => btn.classList.remove('active'));
-    button.classList.add('active');
-
-    if (button.id === 'showAll') displayTasks('all');
-    if (button.id === 'showActive') displayTasks('active');
-    if (button.id === 'showDone') displayTasks('done');
+// Filter tugas
+filterButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const filter = btn.dataset.filter;
+    renderTugas(filter);
   });
 });
 
-// 🧹 Hapus semua tugas yang selesai
-document.getElementById('clearDone').addEventListener('click', () => {
-  tasks = tasks.filter(task => !task.done);
-  saveTasks();
-  displayTasks();
-});
+renderTugas();

@@ -1,14 +1,14 @@
-// Ambil elemen dari HTML
 const inputTugas = document.getElementById("inputTugas");
 const inputDeadline = document.getElementById("inputDeadline");
 const btnTambah = document.getElementById("btnTambah");
 const daftarTugas = document.getElementById("daftarTugas");
 const filterButtons = document.querySelectorAll(".filter");
 const tugasHarianCheckbox = document.getElementById("tugasHarian");
+const hapusSelesaiBtn = document.getElementById("hapusSelesai");
 
 let tugasList = JSON.parse(localStorage.getItem("tugasList")) || [];
 
-// Tambah tugas baru
+// Tambah tugas
 btnTambah.addEventListener("click", () => {
   const teks = inputTugas.value.trim();
   const deadline = inputDeadline.value;
@@ -38,33 +38,37 @@ btnTambah.addEventListener("click", () => {
 function renderTugas(filter = "semua") {
   daftarTugas.innerHTML = "";
 
-  const tugasDitampilkan = tugasList.filter((tugas) => {
-    if (filter === "aktif") return !tugas.selesai;
-    if (filter === "selesai") return tugas.selesai;
+  const tampil = tugasList.filter(t => {
+    if (filter === "aktif") return !t.selesai;
+    if (filter === "selesai") return t.selesai;
     return true;
   });
 
-  if (tugasDitampilkan.length === 0) {
+  if (tampil.length === 0) {
     daftarTugas.innerHTML = `<p>Tidak ada tugas<br>Tambahkan tugas baru untuk memulai</p>`;
     return;
   }
 
-  tugasDitampilkan.forEach((tugas) => {
+  tampil.forEach(tugas => {
     const li = document.createElement("li");
     li.className = tugas.selesai ? "selesai" : "";
+
     li.innerHTML = `
       <span>${tugas.teks} ${tugas.deadline ? `📅 ${tugas.deadline}` : ""}</span>
-      ${tugas.harian ? `<span>🔥 Streak: ${tugas.streak}</span>` : ""}
-      <button onclick="toggleSelesai(${tugas.id})">✔️</button>
-      <button onclick="hapusTugas(${tugas.id})">🗑️</button>
+      ${tugas.harian ? `<span>🔥 ${tugas.streak}</span>` : ""}
+      <div>
+        <button onclick="toggleSelesai(${tugas.id})">✔️</button>
+        <button onclick="hapusTugas(${tugas.id})">🗑️</button>
+      </div>
     `;
+
     daftarTugas.appendChild(li);
   });
 }
 
-// Toggle selesai / belum
+// Toggle selesai
 function toggleSelesai(id) {
-  const tugas = tugasList.find((t) => t.id === id);
+  const tugas = tugasList.find(t => t.id === id);
   if (!tugas) return;
 
   tugas.selesai = !tugas.selesai;
@@ -72,7 +76,7 @@ function toggleSelesai(id) {
   if (tugas.harian && tugas.selesai) {
     const hariIni = new Date().toDateString();
     if (tugas.terakhirSelesai !== hariIni) {
-      tugas.streak += 1;
+      tugas.streak++;
       tugas.terakhirSelesai = hariIni;
     }
   }
@@ -83,21 +87,26 @@ function toggleSelesai(id) {
 
 // Hapus tugas
 function hapusTugas(id) {
-  tugasList = tugasList.filter((t) => t.id !== id);
+  tugasList = tugasList.filter(t => t.id !== id);
   simpanData();
   renderTugas();
 }
 
-// Simpan ke localStorage
+// Hapus semua yang selesai
+hapusSelesaiBtn.addEventListener("click", () => {
+  tugasList = tugasList.filter(t => !t.selesai);
+  simpanData();
+  renderTugas();
+});
+
 function simpanData() {
   localStorage.setItem("tugasList", JSON.stringify(tugasList));
 }
 
-// Filter tugas
-filterButtons.forEach((btn) => {
+// Filter tombol
+filterButtons.forEach(btn => {
   btn.addEventListener("click", () => {
-    const filter = btn.dataset.filter;
-    renderTugas(filter);
+    renderTugas(btn.dataset.filter);
   });
 });
 
